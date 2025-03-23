@@ -1,0 +1,106 @@
+Voici un exemple concret de déploiement d’un projet en Java, HTML, CSS et JavaScript via Ansible et Jenkins.
+7️⃣ Déploiement d'une application Java/HTML/CSS/JS avec Jenkins et Ansible 🚀
+📌 Étape 1 : Structure du projet
+
+Imaginons que ton projet soit organisé ainsi :
+
+/mon-projet
+│── src/
+│   ├── Main.java
+│   ├── ...
+│── web/
+│   ├── index.html
+│   ├── styles.css
+│   ├── script.js
+│── build.gradle  (ou pom.xml si Maven)
+│── Jenkinsfile
+│── deploy.yml (Playbook Ansible)
+
+L'objectif est :
+
+    Compiler l'application Java (si applicable).
+
+    Copier les fichiers HTML/CSS/JS sur le serveur distant.
+
+    Démarrer ou redémarrer le serveur web (Tomcat, Apache, Nginx…).
+
+📌 Étape 2 : Configurer Jenkins pour builder le projet Java
+
+Dans Jenkins, crée un nouveau pipeline et ajoute ce Jenkinsfile :
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/ton-projet.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh './gradlew build' // ou 'mvn package' si Maven
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh './gradlew test' // ou 'mvn test' si Maven
+            }
+        }
+
+        stage('Deploy with Ansible') {
+            steps {
+                sh 'ansible-playbook -i /etc/ansible/hosts deploy.yml'
+            }
+        }
+    }
+}
+
+📌 Étape 3 : Créer le Playbook Ansible pour déployer le projet
+
+Crée un fichier deploy.yml :
+
+---
+- name: Déploiement de l'application Java + Web
+  hosts: webservers
+  become: yes
+
+  tasks:
+    - name: Copier les fichiers de l'application
+      copy:
+        src: /var/lib/jenkins/workspace/mon-projet/web/
+        dest: /var/www/html/
+    
+    - name: Copier l'application Java compilée
+      copy:
+        src: /var/lib/jenkins/workspace/mon-projet/build/libs/app.jar
+        dest: /opt/myapp/app.jar
+    
+    - name: Redémarrer le serveur web
+      systemd:
+        name: apache2
+        state: restarted
+    
+    - name: Démarrer l'application Java
+      shell: "nohup java -jar /opt/myapp/app.jar > /opt/myapp/app.log 2>&1 &"
+
+📌 Étape 4 : Ajouter le serveur cible dans Ansible
+
+Dans /etc/ansible/hosts :
+
+[webservers]
+192.168.1.100 ansible_user=user ansible_ssh_private_key_file=/home/user/.ssh/id_rsa
+
+📌 Étape 5 : Tester et déployer 🚀
+
+    Lance le job dans Jenkins.
+
+    Vérifie que le site est accessible sur http://192.168.1.100/.
+
+    Vérifie que l'application Java tourne :
+
+ps aux | grep java
+
+Si tout fonctionne, ton application est maintenant déployée automatiquement 🎉 
