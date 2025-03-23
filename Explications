@@ -1,0 +1,145 @@
+Introduction 
+
+Dans ce tutoriel, nous allons apprendre à automatiser un déploiement d'application en utilisant Jenkins et Ansible.
+
+Jenkins, c'est un outil d'intégration continue qui permet d'automatiser différentes étapes du cycle de développement logiciel (construction, test, déploiement).
+
+Ansible ⚙️ est un outil d'automatisation qui permet de configurer des serveurs et de déployer des applications sans nécessiter d'installation d'agent sur les machines distantes.
+
+L'objectif ici est de faire travailler ces deux outils ensemble pour que Jenkins puisse déclencher un playbook Ansible permettant de déployer automatiquement une application sur un serveur distant.
+
+
+Pourquoi utiliser Jenkins et Ansible ensemble ?
+
+Jenkins et Ansible : Deux outils complémentaires
+
+Dans le monde du DevOps et de l'automatisation, Jenkins et Ansible sont souvent utilisés ensemble pour plusieurs raisons essentielles :
+
+Jenkins est un orchestrateur puissant qui permet d'exécuter des tâches automatisées selon des déclencheurs précis, comme un commit dans un dépôt Git.
+
+Ansible est un outil de gestion de configuration et de déploiement qui exécute des tâches sur des serveurs distants sans nécessiter d'installation spécifique (contrairement à Puppet ou Chef).
+
+Combiner Jenkins et Ansible permet de créer un pipeline CI/CD robuste et flexible, où Jenkins orchestre l'exécution des tâches et Ansible les exécute de manière fiable et reproductible.
+
+Pourquoi ne pas utiliser seulement Jenkins ou Ansible ?
+
+Jenkins seul : Bien qu'il puisse exécuter des scripts shell pour déployer une application, il ne fournit pas une gestion avancée de l'infrastructure et des configurations des serveurs.
+
+Ansible seul : Il est excellent pour la configuration et le déploiement, mais il n'offre pas de mécanisme de déclenchement automatique basé sur des événements liés au code source.
+
+En résumé, Jenkins joue le rôle de chef d'orchestre et Ansible celui d'exécutant, garantissant ainsi un déploiement fluide et automatisé de bout en bout.
+
+1️⃣ Schéma de fonctionnement 📌
+
+Pour bien comprendre comment Jenkins et Ansible interagissent, voici un schéma simple du processus :
+
+[Développeur] ---> [Push code sur Git] ---> [Jenkins détecte le changement] ---> [Exécute un job Jenkins] ---> [Lance un playbook Ansible] ---> [Déploie sur serveur distant]
+
+Un développeur effectue une modification dans le code source et pousse ses changements dans un dépôt Git.
+
+Jenkins détecte cette modification et déclenche un pipeline d'intégration continue.
+
+Ce pipeline contient une étape où Ansible exécute un playbook qui effectue des actions sur un serveur distant.
+
+L'application est déployée automatiquement, sans intervention manuelle.
+
+
+2️⃣ Pré-requis 🛠️
+
+Avant de commencer, assure-toi d'avoir :
+
+✅ Un serveur avec Jenkins installé et en cours d'exécution.✅ Un serveur distant où Ansible va déployer l'application.✅ Un accès SSH sans mot de passe entre Jenkins et le serveur distant (explications détaillées plus bas).✅ Une application simple à déployer (un site web statique par exemple).
+
+3️⃣ Installation de Jenkins 🏗️
+
+Jenkins fonctionne avec Java, donc il faut d'abord installer Java avant Jenkins.
+
+📌 Sur Ubuntu/Debian
+
+sudo apt update && sudo apt install openjdk-11-jdk -y
+wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -
+sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+sudo apt update && sudo apt install jenkins -y
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+
+📌 Vérifier si Jenkins fonctionne
+
+Une fois installé, Jenkins doit être accessible via un navigateur :
+
+URL d'accès : http://localhost:8080
+
+Pour récupérer le mot de passe initial :
+
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+Ensuite, suivre l'assistant d'installation et installer les plugins recommandés.
+
+4️⃣ Installation d'Ansible ⚙️
+
+Ansible doit être installé sur la machine qui exécutera les commandes (généralement Jenkins ou un serveur d'administration dédié).
+
+📌 Sur Ubuntu/Debian
+
+sudo apt update && sudo apt install ansible -y
+
+📌 Tester l'installation
+
+Vérifie qu'Ansible fonctionne correctement avec :
+
+ansible --version
+
+5️⃣ Configuration SSH entre Jenkins et le serveur distant 🔑
+
+Ansible utilise SSH pour se connecter aux serveurs distants. Il est donc important de configurer une connexion sans mot de passe pour permettre à Jenkins d'exécuter les commandes automatiquement.
+
+📌 Générer une clé SSH
+
+Sur la machine Jenkins :
+
+sudo su - jenkins
+ssh-keygen -t rsa -b 4096
+
+Laisse les champs vides (appuie sur Entrée plusieurs fois).
+
+📌 Copier la clé sur le serveur distant
+
+ssh-copy-id user@remote-server
+
+Teste la connexion SSH :
+
+ssh user@remote-server
+
+Si la connexion fonctionne sans demander de mot de passe, tout est bon ! ✅
+
+6️⃣ Créer un Playbook Ansible 📝
+
+Un playbook est un fichier YAML qui décrit les tâches à exécuter sur un serveur.
+
+Crée un fichier deploy.yml :
+
+---
+- name: Déploiement d'une application
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Copier les fichiers de l'application
+      copy:
+        src: /var/lib/jenkins/workspace/app/
+        dest: /var/www/html/
+    
+    - name: Redémarrer le service web
+      systemd:
+        name: apache2
+        state: restarted
+
+Ajoute ton serveur dans /etc/ansible/hosts :
+
+[webservers]
+192.168.1.100 ansible_user=user
+
+📚 Ressources complémentaires
+
+Documentation officielle de Jenkins : https://www.jenkins.io/doc/
+
+Documentation officielle de Ansible : https://docs.ansible.com/
